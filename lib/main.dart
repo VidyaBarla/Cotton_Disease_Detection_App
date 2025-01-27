@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'languages.dart'; // Import the languages file
 
 void main() => runApp(CottonDiseaseDetectionApp());
 
@@ -22,15 +23,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ImagePicker _picker = ImagePicker();
   String _result = "No image selected.";
-  String _language = "English";
+  String _language = "English"; // Default language is English
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? image = await _picker.pickImage(source: source);
     if (image != null) {
       setState(() {
-        _result = "Processing image..."; // Placeholder for backend call
+        _result = languages[_language]!['processing']!; // Show processing message
       });
-      // TODO: Send the image to the backend and update _result with the output
+      // TODO: Add backend call to process image and update _result with output
+    } else {
+      setState(() {
+        _result = languages[_language]!['no_image']!; // Show no image selected message
+      });
     }
   }
 
@@ -44,12 +49,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_language == "English" ? 'Cotton Disease Detection' : 'कपास रोग पहचान'),
+        title: Text(languages[_language]!['title']!),
         actions: [
           IconButton(
             icon: Icon(Icons.language),
             onPressed: _toggleLanguage,
-            tooltip: _language == "English" ? 'Switch to Hindi' : 'अंग्रेज़ी में स्विच करें',
+            tooltip: languages[_language]!['switch_language']!,
           ),
         ],
       ),
@@ -59,20 +64,20 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _language == "English" ? 'Detect Cotton Diseases' : 'कपास रोगों का पता लगाएं',
+              languages[_language]!['detect_diseases']!,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 20),
             ElevatedButton.icon(
               icon: Icon(Icons.camera_alt),
-              label: Text(_language == "English" ? 'Click Image' : 'छवि क्लिक करें'),
+              label: Text(languages[_language]!['click_image']!),
               onPressed: () => _pickImage(ImageSource.camera),
             ),
             SizedBox(height: 10),
             ElevatedButton.icon(
               icon: Icon(Icons.upload_file),
-              label: Text(_language == "English" ? 'Upload Image' : 'छवि अपलोड करें'),
+              label: Text(languages[_language]!['upload_image']!),
               onPressed: () => _pickImage(ImageSource.gallery),
             ),
             SizedBox(height: 20),
