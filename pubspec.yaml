@@ -33,6 +33,9 @@ dependencies:
   image_picker: ^1.1.2
   tflite_flutter: ^0.11.0
   image: ^4.0.15
+  firebase_core: 3.10.1
+  firebase_auth: 5.4.1
+  
 
 
 
@@ -44,6 +47,15 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.2  # Ensure correct indentation
+  flutter_lints: ^3.0.0
+
+flutter_launcher_icons:  # This must be at the root level, not inside dev_dependencies
+  android: true
+  ios: true
+  image_path: "assets/logo_nobg.png"  # Path to your custom app icon
+  adaptive_icon_background: "#ffffff"
+ 
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -58,8 +70,9 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:     
-    - assets/optimized_model.tflite
-    - assets/upload_placeholder.png
+    - assets/model.tflite
+    - assets/logo.jpg
+    - assets/logo_nobg.png
 
 
 
