@@ -9,7 +9,7 @@ class ImageProcessor {
   // Load the TFLite model
   Future<void> loadModel() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/optimized_model.tflite');
+      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
       print("✅ Model successfully loaded.");
     } catch (e) {
       print("❌ Error loading model: $e");
@@ -17,7 +17,7 @@ class ImageProcessor {
     }
   }
 
-  // Preprocess image (Must match Colab processing exactly)
+  // Preprocess image (Ensure it matches ResNet50 preprocessing)
   Future<List<List<List<List<double>>>>> preprocessImage(File image) async {
     print("📷 Preprocessing image...");
     final bytes = await image.readAsBytes();
@@ -27,10 +27,13 @@ class ImageProcessor {
       throw Exception("❌ Unable to decode image.");
     }
 
-    // Resize image to 224x224 (match model input size)
+    // Resize image to 224x224 (model input size)
     final resizedImage = img.copyResize(originalImage, width: 224, height: 224);
 
-    // Convert image to RGB format and normalize to [0,1]
+    // Mean subtraction values for ResNet50
+    const mean = [123.68, 116.78, 103.94];
+
+    // Convert image to RGB format and apply ResNet50 preprocessing
     List<List<List<double>>> imageTensor = List.generate(
       224,
       (y) => List.generate(
@@ -38,35 +41,27 @@ class ImageProcessor {
         (x) {
           final pixel = resizedImage.getPixel(x, y);
           return [
-            pixel.r.toDouble() / 255.0,  // Normalize Red channel
-            pixel.g.toDouble() / 255.0,  // Normalize Green channel
-            pixel.b.toDouble() / 255.0   // Normalize Blue channel
+            (pixel.r.toDouble() - mean[0]),  // Red channel
+            (pixel.g.toDouble() - mean[1]),  // Green channel
+            (pixel.b.toDouble() - mean[2])   // Blue channel
           ];
         },
       ),
     );
 
     print("✅ Image preprocessing completed.");
-    
-    // Debugging: Print first 5 diagonal pixel values
-    print("🖼 First 5 pixel values from processed image in Flutter:");
-    for (int i = 0; i < 5; i++) {
-      print(imageTensor[i][i]);  // Ensure correct shape
-    }
-
     return [imageTensor]; // Model expects [1, 224, 224, 3]
   }
 
   // Run prediction on the preprocessed image
-  Future<Map<String, String>> predictDisease(File image, String language) async {
+  Future<Map<String, dynamic>> predictDisease(File image, String language) async {
     if (_interpreter == null) {
       throw Exception("❌ Model not loaded.");
     }
 
     print("🔍 Running prediction...");
     var inputImage = await preprocessImage(image);
-
-    var output = List.filled(4, 0.0).reshape([1, 4]);  // Ensure correct shape
+    var output = List.filled(4, 0.0).reshape([1, 4]);
 
     try {
       _interpreter!.run(inputImage, output);
@@ -78,35 +73,31 @@ class ImageProcessor {
     List<double> outputList = List<double>.from(output[0]);
     print("🔢 Model raw output in Flutter: $outputList");
 
-    // Print all class probabilities
-    for (int i = 0; i < outputList.length; i++) {
-      print("Class $i probability: ${outputList[i]}");
-    }
-
-    // Find the predicted class
     int predictedClass = outputList.indexWhere((x) => x == outputList.reduce((a, b) => a > b ? a : b));
     print("📌 Predicted class index in Flutter: $predictedClass");
 
+    List<String> diseaseKeys = ["Bacterial Blight", "Curl Virus", "Fusarium Wilt", "Healthy"];
 
-    // Fetch the disease & remedy from the dictionary
-    List<String> diseases = List<String>.from(languages[language]!["diseases"]);
-    List<String> remedies = List<String>.from(languages[language]!["remedies"]);
-
-    // Ensure predicted class is valid
-    if (predictedClass < 0 || predictedClass >= diseases.length) {
+    if (predictedClass < 0 || predictedClass >= diseaseKeys.length) {
       print("❌ Invalid class index: $predictedClass");
-      return {
-        "disease": "Unknown",
-        "remedy": "No remedy available."
-      };
+      return {"index": -1, "remedy": "No remedy available."};
     }
 
-    print("🦠 Predicted Disease: ${diseases[predictedClass]}");
-    print("💊 Recommended Remedy: ${remedies[predictedClass]}");
+    // Fetch disease data in the selected language
+    Map<String, dynamic>? diseaseData = languages[language]?["disease_details"]?[diseaseKeys[predictedClass]];
+
+    if (diseaseData == null) {
+      print("❌ Disease data missing for: ${diseaseKeys[predictedClass]}");
+      return {"index": predictedClass, "disease": diseaseKeys[predictedClass], "remedy": "No remedy available."};
+    }
+
+    print("🦠 Disease: ${diseaseData["name"]}");
+    print("💊 Remedy: ${diseaseData["remedies"]}");
 
     return {
-      "disease": diseases[predictedClass],  // ✅ Return actual disease name
-      "remedy": remedies[predictedClass]    // ✅ Return actual remedy
+      "index": predictedClass,
+      "disease": diseaseData["name"], // Translated disease name
+      "remedy": diseaseData["remedies"] // Translated remedy
     };
   }
 }
